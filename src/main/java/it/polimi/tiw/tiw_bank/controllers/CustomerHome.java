@@ -9,17 +9,19 @@ import it.polimi.tiw.tiw_bank.models.UserRoles;
 import it.polimi.tiw.tiw_bank.utils.ConnectionHandler;
 import it.polimi.tiw.tiw_bank.validators.BaseValidator;
 
-import javax.servlet.*;
-import javax.servlet.http.*;
-import javax.servlet.annotation.*;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-@WebServlet(name = "Login", value = "/login")
-public class Login extends HttpServlet {
+@WebServlet(name = "CustomerHome", value = "/customer-home")
+public class CustomerHome extends HttpServlet {
     protected Connection connection = null;
 
     @Override
@@ -38,102 +40,21 @@ public class Login extends HttpServlet {
         super.destroy();
     }
 
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Utente in sessione: reindirizzato a HOME.JSP
+        request.getSession().removeAttribute("picked_currentAccount");
+
+        CurrentAccountDAO currentAccountDao = new CurrentAccountDAO(connection);
         User sexUser = (User)request.getSession().getAttribute("user");
-        if ( sexUser != null ) {
-            switch ( sexUser.getRole() ) {
-                case ADMIN:
-                    request.getRequestDispatcher("/admin_home.jsp").forward(request, response);
-                    break;
-                case CUSTOMER:
-                    request.getRequestDispatcher("/customer_home.jsp").forward(request, response);
-            }
-        }
-        // Utente non in sessione: login tramite LOGIN.JSP
-        else {
-            request.getRequestDispatcher("/login.jsp").forward(request, response);
-        }
-    }
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // LETTURA PARAMETRI
-        String email = request.getParameter("email");
-        String password = request.getParameter("password");
-
-        // VALIDAZIONE PARAMETRI
-        List<String> errors = postValidation(email, password);
-
-        // 0 ERRORI: completamento servizio login
-        if (errors.isEmpty()) {
-            // SERVIZIO E CHIAMATE AL DAO
-            try {
-                UserDAO userDao = new UserDAO(connection);
-                User user = userDao.checkCredentials(email, password);
-
-                // Se login fallito, invio errore
-                if (user == null) {
-                    errors.add("Incorrect credentials.");
-                    request.setAttribute("messages", errors);
-                    request.setAttribute("login_form", new LoginForm(email, password));
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    request.getRequestDispatcher("/login.jsp").forward(request, response);
-                }
-                // Altrimenti, salvataggio utente in sessione e indirizza a HOME in base al ruolo dell'utente
-                else {
-                    request.getSession().setAttribute("user", user);
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    switch ( user.getRole() ) {
-                        case ADMIN:
-                            request.getSession().setAttribute("holders", userDao.retrieveByRole( UserRoles.CUSTOMER ));
-                            response.sendRedirect("create-current-account");
-                            break;
-                        case CUSTOMER:
-                            CurrentAccountDAO currentAccountDao = new CurrentAccountDAO(connection);
-                            request.getSession().setAttribute("myCurrentAccounts",
-                                    currentAccountDao.retrieveByHolderId( user.getId() ));
-                            request.getRequestDispatcher("/customer_home.jsp").forward(request, response);
-                    }
-                }
-            } catch (SQLException e) {
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                response.getWriter().println("Oops! Internal server error, retry later...");
-            }
-        }
-        // ERRORI: salvataggio errori e ritorno alla pagina di login
-        else {
-            request.setAttribute("messages", errors);
-            request.setAttribute("login_form", new LoginForm(email, password));
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            request.getRequestDispatcher("/login.jsp").forward(request, response);
-        }
-
-    }
-
-
-
-    private List<String> postValidation(String email, String password) {
-        List<String> errors = new ArrayList<>();
-
-        // Check email compilata
         try {
-            BaseValidator.rule_required("email", email);
-            BaseValidator.rule_validEmail(email);
-        } catch (ValidationException e) {
-            errors.add(e.getMessage());
+            request.setAttribute("myCurrentAccounts", currentAccountDao.retrieveByHolderId( sexUser.getId() ));
+        } catch (SQLException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().println("Oops! Internal server error, retry later...");
         }
 
-        // Check password compilata
-        try {
-            BaseValidator.rule_required("password", password);
-        } catch (ValidationException e) {
-            errors.add(e.getMessage());
-        }
-
-        return errors;
+        request.getRequestDispatcher("/customer_home.jsp").forward(request, response);
     }
 
 }

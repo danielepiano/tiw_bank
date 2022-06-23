@@ -12,8 +12,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-@WebFilter(filterName = "AuthenticationFilter", urlPatterns = "*")
-public class AuthenticationFilter implements Filter {
+@WebFilter(filterName = "AuthorizationFilter", urlPatterns = "*")
+public class AuthorizationFilter implements Filter {
     private final List<String> customerJSP = Arrays.asList(
             "customer_home.jsp",
             "customer_manage_current_account.jsp",
@@ -51,7 +51,14 @@ public class AuthenticationFilter implements Filter {
             ).flatMap( Stream::of ).toArray( String[]::new )
     );
 
-
+    /**
+     * Gestione autorizzazione su JSP e Servlet in base all'utente loggato (eventualmente, al suo ruolo).
+     * @param request
+     * @param response
+     * @param chain
+     * @throws ServletException
+     * @throws IOException
+     */
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws ServletException, IOException {
         HttpServletRequest req = (HttpServletRequest)request;

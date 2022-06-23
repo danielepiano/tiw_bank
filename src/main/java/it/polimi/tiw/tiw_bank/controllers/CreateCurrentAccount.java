@@ -1,12 +1,17 @@
 package it.polimi.tiw.tiw_bank.controllers;
 
+import it.polimi.tiw.tiw_bank.beans.CreateCurrentAccountForm;
+import it.polimi.tiw.tiw_bank.beans.CreateTransferForm;
 import it.polimi.tiw.tiw_bank.beans.LoginForm;
 import it.polimi.tiw.tiw_bank.beans.RegistrationForm;
+import it.polimi.tiw.tiw_bank.dao.CurrentAccountDAO;
 import it.polimi.tiw.tiw_bank.dao.UserDAO;
 import it.polimi.tiw.tiw_bank.exceptions.ValidationException;
+import it.polimi.tiw.tiw_bank.models.CurrentAccount;
 import it.polimi.tiw.tiw_bank.models.UserRoles;
 import it.polimi.tiw.tiw_bank.utils.ConnectionHandler;
 import it.polimi.tiw.tiw_bank.validators.BaseValidator;
+import it.polimi.tiw.tiw_bank.validators.CurrentAccountValidator;
 import it.polimi.tiw.tiw_bank.validators.UserValidator;
 
 import javax.servlet.ServletException;
@@ -20,8 +25,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-@WebServlet(name = "Register", value = "/register")
-public class Register extends HttpServlet {
+@WebServlet(name = "CreateCurrentAccount", value = "/create-current-account")
+public class CreateCurrentAccount extends HttpServlet {
     protected Connection connection = null;
 
     @Override
@@ -43,47 +48,37 @@ public class Register extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Utente in sessione: reindirizzato a HOME.JSP
-        if ( request.getSession().getAttribute("user") != null ) {
-            request.getRequestDispatcher("/admin_home.jsp").forward(request, response);
-        }
-        // Utente non in sessione: registrazione tramite REGISTER.JSP
-        else {
-            request.getRequestDispatcher("/register.jsp").forward(request, response);
-        }
+        response.sendRedirect("admin-home");
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // LETTURA PARAMETRI
-        String firstName = request.getParameter("first_name");
-        String lastName = request.getParameter("last_name");
-        String email = request.getParameter("email");
-        String password = request.getParameter("password");
-        String confirmPassword = request.getParameter("confirm_password");
+        CurrentAccountDAO currentAccountDao = new CurrentAccountDAO(connection);
 
-        // VALIDAZIONE PARAMETRI
+        // Lettura parametri
+        List<String> errors = new ArrayList<>();
+        CreateCurrentAccountForm createCAForm = getParameters(request, errors);
+
         try {
-            List<String> errors = postValidation(firstName, lastName, email, password, confirmPassword);
+            // Validazione parametri
+            errors.addAll( postValidation(request, createCAForm) );
 
-            // 0 ERRORI: completamento servizio registrazione
             if (errors.isEmpty()) {
+                // 0 ERRORI: completamento SERVIZIO creazione conto corrente
                 // SERVIZIO E CHIAMATE AL DAO
-                UserDAO userDao = new UserDAO(connection);
-                userDao.create(firstName, lastName, UserRoles.CUSTOMER, email, password);
+                currentAccountDao.create( createCAForm.getOpeningBalance(), createCAForm.getHolderId());
 
-                errors.add("Successful registration!");
-                request.setAttribute("messages", errors);
-                request.setAttribute("login_form", new LoginForm(email, ""));
-                response.setStatus(HttpServletResponse.SC_OK);
-                request.getRequestDispatcher("/login.jsp").forward(request, response);
+                // Preparazione pagina conferma creazione conto corrente (coincide con la ADMIN HOME stessa)
+                errors.add("Successful creation!");
+                request.getSession().setAttribute("messages", errors);
+                response.sendRedirect("admin-home");
             }
-            // ERRORI: salvataggio errori e ritorno alla pagina di login
             else {
+                // ERRORI: salvataggio errori e ritorno alla pagina ADMIN-HOME
                 request.setAttribute("messages", errors);
-                request.setAttribute("reg_form", new RegistrationForm(firstName, lastName, email, password, confirmPassword));
+                request.setAttribute("ca_form", createCAForm);
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                request.getRequestDispatcher("/register.jsp").forward(request, response);
+                request.getRequestDispatcher("/admin_home.jsp").forward(request, response);
             }
         } catch (SQLException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -93,46 +88,49 @@ public class Register extends HttpServlet {
     }
 
 
-    private List<String> postValidation(String firstName, String lastName, String email, String password, String confirmPassword) throws SQLException {
+    /**
+     * Lettura parametri dalla richiesta.
+     * @param request
+     * @param errors
+     * @return
+     */
+    private CreateCurrentAccountForm getParameters(HttpServletRequest request, List<String> errors) {
+        Float openingBalance = null;
+        try { openingBalance = Float.parseFloat( request.getParameter("opening_balance") );
+        } catch ( NumberFormatException e ) { errors.add("Opening balance must be a floating point number.");}
+
+        Integer holderId = null;
+        try { holderId = Integer.parseInt( request.getParameter("holder_id") );
+        } catch ( NumberFormatException e ) { errors.add("Invalid holder.");}
+
+        return new CreateCurrentAccountForm(openingBalance, holderId);
+    }
+
+    /**
+     * Validazione parametri della richiesta.
+     * @param request
+     * @param currentAccount
+     * @return
+     * @throws SQLException
+     */
+    private List<String> postValidation(HttpServletRequest request, CreateCurrentAccountForm currentAccount)
+            throws SQLException {
         List<String> errors = new ArrayList<>();
 
-        // Check firstname
+        Float openingBalance = currentAccount.getOpeningBalance();
+        Integer holderId = currentAccount.getHolderId();
+
+        // Check opening balance
         try {
-            BaseValidator.rule_required("first name", firstName);
-            BaseValidator.rule_alpha("first name", firstName);
+            BaseValidator.rule_required("opening balance", openingBalance);
         } catch (ValidationException e) {
             errors.add(e.getMessage());
         }
 
-        // Check lastname
+        // Check holderId
         try {
-            BaseValidator.rule_required("last name", lastName);
-            BaseValidator.rule_alpha("last name", lastName);
-        } catch (ValidationException e) {
-            errors.add(e.getMessage());
-        }
-
-        // Check email
-        try {
-            BaseValidator.rule_required("email", email);
-            BaseValidator.rule_validEmail(email);
-            UserValidator.rule_emailUnique(email, connection);
-        } catch (ValidationException e) {
-            errors.add(e.getMessage());
-        }
-
-        // Check password
-        try {
-            BaseValidator.rule_required("password", password);
-            BaseValidator.rule_validPassword(password);
-        } catch (ValidationException e) {
-            errors.add(e.getMessage());
-        }
-
-        // Check conferma password e matching con password
-        try {
-            BaseValidator.rule_required("password confirmation", confirmPassword);
-            BaseValidator.rule_matchingPassword(password, confirmPassword);
+            BaseValidator.rule_required("holder", holderId);
+            CurrentAccountValidator.rule_idExists(holderId, connection);
         } catch (ValidationException e) {
             errors.add(e.getMessage());
         }

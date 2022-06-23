@@ -1,40 +1,38 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <head>
-    <title>Registrati</title>
+    <title>CUSTOMER HOME</title>
+    <style>
+        table { font-family: arial, sans-serif; border-collapse: collapse;}
+        td, th { border: 1px solid #dddddd; text-align: left; padding: 8px;}
+        tr:nth-child(even) { background-color: #dddddd;}
+    </style>
 </head>
 <body>
 
-    <p>← Back to <a href="login">login</a></p>
+    <p><a href="logout">logout</a></p>
 
-    <form action="register" method="POST">
-        <label for="first_name">First name</label> <br>
-        <input type="text" id="first_name" name="first_name"
-               value="<c:out value="${reg_form.firstName}"/>" placeholder="Enter first name" /> <br>
+    <h1>Welcome back, <c:out value="${user.firstName} ${user.lastName}" />!</h1>
 
-        <label for="last_name">Last name</label> <br>
-        <input type="text" id="last_name" name="last_name"
-               value="<c:out value="${reg_form.lastName}"/>" placeholder="Enter last name" /> <br>
-
-        <label for="email">Email</label> <br>
-        <input type="text" id="email" name="email"
-               value="<c:out value="${reg_form.email}"/>" placeholder="Enter email" /> <br>
-
-        <label for="password">Password</label> <br>
-        <input type="password" id="password" name="password"
-               value="<c:out value="${reg_form.password}"/>" placeholder="Enter password" /> <br>
-
-        <label for="confirm_password">Password</label> <br>
-        <input type="password" id="confirm_password" name="confirm_password"
-               value="<c:out value="${reg_form.confirmPassword}"/>" placeholder="Confirm password" /> <br><br>
-        <input type="submit" value="Sign up">
-    </form>
-
-    <ul>
-        <c:forEach var="error" items="${messages}">
-            <li><c:out value="${error}" /></li>
+    <c:if test="${not empty myCurrentAccounts}">
+    <table >
+        <tr>
+            <th>Account number</th>
+            <th>Balance</th>
+        </tr>
+        <c:forEach var="ca" items="${myCurrentAccounts}">
+        <tr>
+            <td><c:out value="${ca.accountNumber}" /></td>
+            <td><fmt:formatNumber type="currency" currencySymbol="€" value="${ca.balance}" /></td>
+            <td><a href="manage-current-account?id=<c:out value="${ca.id}" />">Manage current account</a></td>
+        </tr>
         </c:forEach>
-    </ul>
+    </table>
+    </c:if>
+    <c:if test="${empty myCurrentAccounts}">
+    <p>No current account opened. Talk to an administrator and open one!</p>
+    </c:if>
 
 </body>
 </html>

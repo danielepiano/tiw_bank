@@ -1,13 +1,12 @@
 package it.polimi.tiw.tiw_bank.exceptions;
 
-public class ValidationException extends Exception {
-
+public class UnauthorizedException extends Exception {
 	private static final long serialVersionUID = 1L;
 
-	public ValidationException() {
-		super("Validation exception occured.");
+	public UnauthorizedException() {
+		super("Unauthorized for this operation.");
 	}
-	public ValidationException(String message) {
+	public UnauthorizedException(String message) {
 		super(message);
 	}
 

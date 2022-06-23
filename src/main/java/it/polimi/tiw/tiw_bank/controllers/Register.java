@@ -1,24 +1,29 @@
 package it.polimi.tiw.tiw_bank.controllers;
 
-import it.polimi.tiw.tiw_bank.beans.LoginRegisterForm;
+import it.polimi.tiw.tiw_bank.beans.CreateCurrentAccountForm;
+import it.polimi.tiw.tiw_bank.beans.LoginForm;
+import it.polimi.tiw.tiw_bank.beans.RegistrationForm;
 import it.polimi.tiw.tiw_bank.dao.UserDAO;
 import it.polimi.tiw.tiw_bank.exceptions.ValidationException;
 import it.polimi.tiw.tiw_bank.models.User;
+import it.polimi.tiw.tiw_bank.models.UserRoles;
 import it.polimi.tiw.tiw_bank.utils.ConnectionHandler;
-import it.polimi.tiw.tiw_bank.utils.Validator;
+import it.polimi.tiw.tiw_bank.validators.BaseValidator;
+import it.polimi.tiw.tiw_bank.validators.UserValidator;
 
-import javax.servlet.*;
-import javax.servlet.http.*;
-import javax.servlet.annotation.*;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-@WebServlet(name = "Login", value = "/login")
-public class Login extends HttpServlet {
-
+@WebServlet(name = "Register", value = "/register")
+public class Register extends HttpServlet {
     protected Connection connection = null;
 
     @Override
@@ -40,82 +45,119 @@ public class Login extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Utente in sessione: reindirizzato a HOME.JSP
-        if ( request.getSession().getAttribute("user") != null ) {
-            request.getRequestDispatcher("/home.jsp").forward(request, response);
-        }
-        // Utente non in sessione: login tramite LOGIN.JSP
-        else {
-            request.getRequestDispatcher("/login.jsp").forward(request, response);
-        }
+        request.getRequestDispatcher("/register.jsp").forward(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // LETTURA PARAMETRI
-        String email = request.getParameter("email");
-        String password = request.getParameter("password");
+        UserDAO userDao = new UserDAO(connection);
 
-        // VALIDAZIONE PARAMETRI
-        List<String> errors = postValidation(email, password);
+        // Lettura parametri
+        List<String> errors = new ArrayList<>();
+        RegistrationForm regForm = getParameters(request, errors);
 
-        // 0 ERRORI: completamento servizio login
-        if (errors.isEmpty()) {
-            // SERVIZIO E CHIAMATE AL DAO
-            try {
-                UserDAO userDao = new UserDAO(connection);
-                User user = userDao.checkCredentials(email, password);
+        try {
+            // Validazione parametri
+            errors.addAll( postValidation(request, regForm) );
 
-                // Se login fallito, invio errore
-                if (user == null) {
-                    errors.add("Incorrect credentials");
-                    request.setAttribute("messages", errors);
-                    request.setAttribute("login_form", new LoginRegisterForm(email, password));
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    request.getRequestDispatcher("/login.jsp").forward(request, response);
-                }
-                // Altrimenti, salvataggio utente in sessione e indirizza a HOME PAGE
-                else {
-                    request.getSession().setAttribute("user", user);
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    // ...
-                }
-            } catch (SQLException e) {
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                response.getWriter().println("Oops! Internal server error, retry later...");
+            if (errors.isEmpty()) {
+                // 0 ERRORI: completamento SERVIZIO registrazione
+                userDao.create( regForm.getFirstName(), regForm.getLastName(), UserRoles.CUSTOMER,
+                        regForm.getEmail(), regForm.getPassword());
+
+                // Preparazione pagina LOGIN
+                errors.add("Successful registration!");
+                request.getSession().setAttribute("messages", errors);
+                request.getSession().setAttribute("login_form", new LoginForm( regForm.getEmail(), "" ));
+                response.sendRedirect("login");
+            } else {
+                // ERRORI: salvataggio errori e ritorno alla pagina di login
+                request.setAttribute("messages", errors);
+                request.setAttribute("reg_form", regForm);
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                request.getRequestDispatcher("/register.jsp").forward(request, response);
             }
-        }
-        // ERRORI: salvataggio errori e ritorno alla pagina di login
-        else {
-            request.setAttribute("messages", errors);
-            request.setAttribute("login_form", new LoginRegisterForm(email, password));
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            request.getRequestDispatcher("/login.jsp").forward(request, response);
+        } catch (SQLException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().println("Oops! Internal server error, retry later...");
         }
 
     }
 
 
+    /**
+     * Lettura parametri dalla richiesta.
+     * @param request
+     * @param errors
+     * @return
+     */
+    private RegistrationForm getParameters(HttpServletRequest request, List<String> errors) {
+        return new RegistrationForm(
+                request.getParameter("first_name"),
+                request.getParameter("last_name"),
+                request.getParameter("email"),
+                request.getParameter("password"),
+                request.getParameter("confirm_password")
+        );
+    }
 
-    private List<String> postValidation(String email, String password) {
+    /**
+     * Validazione parametri della richiesta.
+     * @param request
+     * @param form
+     * @return
+     * @throws SQLException
+     */
+    private List<String> postValidation(HttpServletRequest request, RegistrationForm form) throws SQLException {
         List<String> errors = new ArrayList<>();
 
-        // Check email compilata
+        String firstName = form.getFirstName();
+        String lastName = form.getLastName();
+        String email = form.getEmail();
+        String password = form.getPassword();
+        String confirmPassword = form.getConfirmPassword();
+
+        // Check firstname
         try {
-            Validator.rule_required("Email", email);
-            Validator.rule_validEmail(email);
+            BaseValidator.rule_required("first name", firstName);
+            BaseValidator.rule_alpha("first name", firstName);
         } catch (ValidationException e) {
             errors.add(e.getMessage());
         }
 
-        // Check password compilata
+        // Check lastname
         try {
-            Validator.rule_required("Password", password);
+            BaseValidator.rule_required("last name", lastName);
+            BaseValidator.rule_alpha("last name", lastName);
+        } catch (ValidationException e) {
+            errors.add(e.getMessage());
+        }
+
+        // Check email
+        try {
+            BaseValidator.rule_required("email", email);
+            BaseValidator.rule_validEmail(email);
+            UserValidator.rule_emailUnique(email, connection);
+        } catch (ValidationException e) {
+            errors.add(e.getMessage());
+        }
+
+        // Check password
+        try {
+            BaseValidator.rule_required("password", password);
+            BaseValidator.rule_validPassword(password);
+        } catch (ValidationException e) {
+            errors.add(e.getMessage());
+        }
+
+        // Check conferma password e matching con password
+        try {
+            BaseValidator.rule_required("password confirmation", confirmPassword);
+            BaseValidator.rule_matchingPassword(password, confirmPassword);
         } catch (ValidationException e) {
             errors.add(e.getMessage());
         }
 
         return errors;
     }
-
 }

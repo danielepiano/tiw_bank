@@ -1,2 +1,151 @@
-package it.polimi.tiw.tiw_bank.dao;public class UserDAO {
+package it.polimi.tiw.tiw_bank.dao;
+
+import it.polimi.tiw.tiw_bank.models.Transfer;
+import it.polimi.tiw.tiw_bank.models.User;
+import it.polimi.tiw.tiw_bank.models.UserRoles;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class UserDAO {
+    private Connection con;
+
+    public UserDAO(Connection connection) {
+        this.con = connection;
+    }
+
+
+    /**
+     * Creazione utente.
+     * @param firstName
+     * @param lastName
+     * @param role
+     * @param email
+     * @param password
+     * @return
+     * @throws SQLException
+     */
+    public Integer create(String firstName, String lastName, UserRoles role, String email, String password) throws SQLException {
+        String query = "INSERT into users (first_name, last_name, role, email, password) VALUES(?, ?, ?, ?, ?)";
+        try ( PreparedStatement pstat = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS) ) {
+            pstat.setString( 1, firstName );
+            pstat.setString( 2, lastName );
+            pstat.setString( 3, role.getRole() );
+            pstat.setString( 4, email );
+            pstat.setString( 5, password );
+            pstat.executeUpdate();
+
+            // Ritornato l'id della risorsa appena creata.
+            ResultSet generatedKeys = pstat.getGeneratedKeys();
+            if ( generatedKeys.next() ) {
+                return generatedKeys.getInt(1);
+            } else {
+                throw new SQLException("Creating user failed, no ID obtained.");
+            }
+        }
+    }
+
+    /**
+     * Retrieve utente dato id.
+     * @param id				Id utente richiesto.
+     * @return
+     * @throws SQLException
+     */
+    public User retrieveById(Integer id) throws SQLException {
+        String query = "SELECT * FROM users WHERE id = ?";
+        try ( PreparedStatement pstat = con.prepareStatement(query) ) {
+            pstat.setInt( 1, id );
+            try ( ResultSet result = pstat.executeQuery() ) {
+                if ( !result.isBeforeFirst() ) { 		// Se non esiste il trasferimento, ritorna null
+                    return null;
+                } else {				// Altrimenti, ritorna un oggetto Transfer con i dati relativi
+                    result.next();
+                    return internal_getUserByResult(result);
+                }
+            }
+        }
+    }
+
+    /**
+     * Retrieve utenti dato ruolo.
+     * @param role
+     * @return
+     * @throws SQLException
+     */
+    public List<User> retrieveByRole(UserRoles role) throws SQLException {
+        List<User> users = new ArrayList<>();
+
+        String query = "SELECT * FROM users where role = ?";
+        try ( PreparedStatement pstat = con.prepareStatement(query) ) {
+            pstat.setString( 1, role.getRole() );
+            try ( ResultSet result = pstat.executeQuery() ) {
+                while ( result.next() ) {
+                    users.add( internal_getUserByResult(result) );
+                }
+            }
+        }
+        return users;
+    }
+
+    /**
+     * Retrieve utente data email.
+     * @param email			    Email utente richiesto
+     * @return
+     * @throws SQLException
+     */
+    public User retrieveByEmail(String email) throws SQLException {
+        String query = "SELECT * FROM users WHERE email = ?";
+        try ( PreparedStatement pstat = con.prepareStatement(query) ) {
+            pstat.setString( 1, email );
+            try ( ResultSet result = pstat.executeQuery() ) {
+                if ( !result.isBeforeFirst() ) {	// Se non esiste il conto corrente, ritorna null
+                    return null;
+                } else {			                // Altrimenti, ritorna un oggetto CurrentAccount con i dati relativi
+                    result.next();
+                    return internal_getUserByResult(result);
+                }
+            }
+        }
+    }
+
+    /**
+     * Check credenziali email-password.
+     * @param email
+     * @param password
+     * @return
+     * @throws SQLException
+     */
+    public User checkCredentials(String email, String password) throws SQLException {
+        String query = "SELECT  id, first_name, last_name, email, role FROM users WHERE email = ? AND password = ?";
+        try ( PreparedStatement pstat = con.prepareStatement(query) ) {
+            pstat.setString(1, email);
+            pstat.setString(2, password);
+            try ( ResultSet result = pstat.executeQuery() ) {
+                if ( !result.isBeforeFirst() ) {    // Se email-password non sono associati ad alcun utente, ritorna null
+                    return null;
+                } else { 		                    // Altrimenti, ritorna un oggetto User con i dati relativi
+                    result.next();
+                    return internal_getUserByResult(result);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Ottenimento oggetto User a partire da una row del ResultSet.
+     * @param result
+     * @return
+     * @throws SQLException
+     */
+    private User internal_getUserByResult(ResultSet result) throws SQLException {
+        User user = new User();
+        user.setId( 		result.getInt("id") );
+        user.setFirstName(	result.getString("first_name") );
+        user.setLastName(	result.getString("last_name") );
+        user.setEmail( 		result.getString("email") );
+        user.setRole( 		result.getString("role") );
+        return user;
+    }
+
 }

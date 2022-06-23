@@ -1,16 +1,15 @@
 package it.polimi.tiw.tiw_bank.controllers;
 
 import it.polimi.tiw.tiw_bank.beans.CreateCurrentAccountForm;
-import it.polimi.tiw.tiw_bank.beans.LoginForm;
-import it.polimi.tiw.tiw_bank.beans.RegistrationForm;
 import it.polimi.tiw.tiw_bank.dao.CurrentAccountDAO;
-import it.polimi.tiw.tiw_bank.dao.UserDAO;
+import it.polimi.tiw.tiw_bank.dao.TransferDAO;
+import it.polimi.tiw.tiw_bank.exceptions.UnauthorizedException;
 import it.polimi.tiw.tiw_bank.exceptions.ValidationException;
-import it.polimi.tiw.tiw_bank.models.UserRoles;
+import it.polimi.tiw.tiw_bank.models.CurrentAccount;
+import it.polimi.tiw.tiw_bank.models.User;
 import it.polimi.tiw.tiw_bank.utils.ConnectionHandler;
 import it.polimi.tiw.tiw_bank.validators.BaseValidator;
 import it.polimi.tiw.tiw_bank.validators.CurrentAccountValidator;
-import it.polimi.tiw.tiw_bank.validators.UserValidator;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -23,8 +22,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-@WebServlet(name = "CreateCurrentAccount", value = "/create-current-account")
-public class CreateCurrentAccount extends HttpServlet {
+@WebServlet(name = " ManageCurrentAccount", value = "/manage-current-account")
+public class ManageCurrentAccount extends HttpServlet {
     protected Connection connection = null;
 
     @Override
@@ -46,79 +45,34 @@ public class CreateCurrentAccount extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Operazione ADMIN:
-        // se ADMIN, procedi
-        // sennò se CUSTOMER loggato -> CUSTOMER HOME
-        // sennò se non loggato -> LOGIN
-        request.getRequestDispatcher("/admin_home.jsp").forward(request, response);
-    }
+        request.getSession().removeAttribute("transfer");
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // LETTURA PARAMETRI
-        List<String> errors = new ArrayList<>();
+        CurrentAccountDAO currentAccountDao = new CurrentAccountDAO(connection);
+        TransferDAO transferDao = new TransferDAO(connection);
 
-        Float openingBalance = null;
-        Integer holderId = null;
         try {
-            openingBalance = Float.parseFloat( request.getParameter("opening_balance") );
-        } catch ( NumberFormatException e ) {
-            errors.add("Opening balance must be a floating point number.");
-        }
-        try {
-            holderId = Integer.parseInt( request.getParameter("holder_id") );
-        } catch ( NumberFormatException e ) {
-            errors.add("Invalid holder.");
-        }
+            User sexUser = (User)request.getSession().getAttribute("user");
 
-        // VALIDAZIONE PARAMETRI
-        try {
-            errors.addAll( postValidation(openingBalance, holderId) );
+            // Lettura id conto corrente da gestire, specificato nella query string
+            Integer id = Integer.parseInt( request.getParameter("id") );
+            CurrentAccount pickedCurrentAccount = currentAccountDao.retrieveById(id);
+            request.getSession().setAttribute("picked_currentAccount", pickedCurrentAccount);
 
-            // 0 ERRORI: completamento servizio registrazione
-            if (errors.isEmpty()) {
-                // SERVIZIO E CHIAMATE AL DAO
-                CurrentAccountDAO currentAccountDao = new CurrentAccountDAO(connection);
-                currentAccountDao.create(openingBalance, holderId);
-
-                errors.add("Successful creation!");
-                request.setAttribute("messages", errors);
-                response.setStatus(HttpServletResponse.SC_OK);
-                request.getRequestDispatcher("/admin_home.jsp").forward(request, response);
+            // Check che il conto corrente da gestire sia effettivamente dell'utente in sessione
+            if ( !pickedCurrentAccount.getHolderId().equals( sexUser.getId() ) ) {
+                throw new UnauthorizedException();
             }
-            // ERRORI: salvataggio errori e ritorno alla pagina di login
-            else {
-                request.setAttribute("messages", errors);
-                request.setAttribute("ca_form", new CreateCurrentAccountForm(openingBalance, holderId));
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                request.getRequestDispatcher("/admin_home.jsp").forward(request, response);
-            }
-        } catch (SQLException e) {
+
+            // Caricamento in sessione storico trasferimenti per il conto selezionato
+            request.getSession().setAttribute("transfer_history", transferDao.retrieveByCurrentAccountId( id ));
+            response.setStatus(HttpServletResponse.SC_OK);
+            request.getRequestDispatcher("/customer_manage_current_account.jsp").forward(request, response);
+        } catch ( SQLException e ) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().println("Oops! Internal server error, retry later...");
+        } catch ( NumberFormatException | UnauthorizedException e ) {
+            response.sendRedirect("customer-home");
         }
-
     }
 
-
-    private List<String> postValidation(Float openingBalance, Integer holderId) throws SQLException {
-        List<String> errors = new ArrayList<>();
-
-        // Check opening balance
-        try {
-            BaseValidator.rule_required("opening balance", openingBalance);
-        } catch (ValidationException e) {
-            errors.add(e.getMessage());
-        }
-
-        // Check holderId
-        try {
-            BaseValidator.rule_required("holder", holderId);
-            CurrentAccountValidator.rule_idExists(holderId, connection);
-        } catch (ValidationException e) {
-            errors.add(e.getMessage());
-        }
-
-        return errors;
-    }
 }

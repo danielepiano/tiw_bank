@@ -6,20 +6,21 @@ import it.polimi.tiw.tiw_bank.exceptions.ValidationException;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class UserValidator {
+public class CurrentAccountValidator {
+
     /**
-     * Check unicità email inserita dall'utente.
-     * @param email
+     * Check esistenza utente dato id.
+     * @param holderId
      * @param connection
      * @return
      * @throws SQLException
      * @throws ValidationException
      */
-    public static boolean rule_emailUnique(String email, Connection connection) throws SQLException, ValidationException {
+    public static boolean rule_idExists(Integer holderId, Connection connection) throws SQLException, ValidationException {
         UserDAO userDao = new UserDAO(connection);
-        if ( userDao.retrieveByEmail(email) == null ) {
+        if ( userDao.retrieveById(holderId) != null ) {
             return true;
         }
-        throw new ValidationException("Email already used.");
+        throw new ValidationException("Non-existing user.");
     }
 }

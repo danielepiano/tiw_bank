@@ -1,9 +1,8 @@
-package it.polimi.tiw.moneytransfer.utils;
+package it.polimi.tiw.tiw_bank.utils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-
 import javax.servlet.ServletContext;
 import javax.servlet.UnavailableException;
 

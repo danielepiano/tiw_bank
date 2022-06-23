@@ -1,4 +1,4 @@
-package it.polimi.tiw.moneytransfer.controllers;
+package it.polimi.tiw.tiw_bank.controllers;
 
 import java.io.IOException;
 
@@ -9,7 +9,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-@WebServlet("/logout")
+@WebServlet(name = "Logout", value = "/logout")
 public class Logout extends HttpServlet {
 
 	@Override
@@ -20,9 +20,7 @@ public class Logout extends HttpServlet {
 		if (session != null) {
 			session.invalidate();
 		}
-		String path = getServletContext().getContextPath() + "/index.html";
-		System.out.print(path);
-		response.sendRedirect(path);
+		request.getRequestDispatcher("/login.jsp").forward(request, response);
 	}
 
 	@Override

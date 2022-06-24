@@ -2,7 +2,7 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <head>
-    <title>MANAGE <c:out value="${picked_currentAccount.accountNumber}" /></title>
+    <title><c:out value="${picked_currentAccount.accountNumber}" /> status</title>
     <style>
         table { font-family: arial, sans-serif; border-collapse: collapse;}
         td, th { border: 1px solid #dddddd; text-align: left; padding: 8px;}

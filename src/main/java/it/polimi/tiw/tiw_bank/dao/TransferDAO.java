@@ -17,23 +17,19 @@ public class TransferDAO {
 
     /**
      * Creazione trasferimento.
-     * @param amount
-     * @param reason
-     * @param senderAccountId
-     * @param recipientAccountId
+     * @param toCreate
      * @return
      * @throws SQLException
      */
-    public Integer create(Float amount, String reason, Integer senderAccountId, Integer recipientAccountId)
-            throws SQLException {
+    public Integer create(Transfer toCreate) throws SQLException {
         String query = "INSERT into transfers (amount, reason, issue_date, sender_account_id, recipient_account_id)"
                 + " VALUES(?, ?, ?, ?, ?)";
         try ( PreparedStatement pstat = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS) ) {
-            pstat.setFloat( 1, amount );
-            pstat.setString( 2, reason );
+            pstat.setFloat( 1, toCreate.getAmount() );
+            pstat.setString( 2, toCreate.getReason() );
             pstat.setDate( 3, Date.valueOf(LocalDate.now()) );
-            pstat.setInt( 4, senderAccountId );
-            pstat.setInt( 5, recipientAccountId );
+            pstat.setInt( 4, toCreate.getSenderAccountId() );
+            pstat.setInt( 5, toCreate.getRecipientAccountId() );
             pstat.executeUpdate();
 
             // Ritornato l'id della risorsa appena creata.

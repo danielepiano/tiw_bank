@@ -105,7 +105,7 @@ public class CreateTransfer extends HttpServlet {
             connection.setAutoCommit(false);
 
             CurrentAccount senderCA = ((CurrentAccount)request.getSession().getAttribute("picked_currentAccount"));
-            CurrentAccount recipientCA = currentAccountDao.retrieveByAccountNumber(transfer.getRecipientAccountNumber());
+            CurrentAccount recipientCA = currentAccountDao.retrieveByAccountNumber( transfer.getRecipientAccountNumber() );
 
             // Aggiunta importo al saldo del recipient
             currentAccountDao.updateBalance(recipientCA.getId(), recipientCA.getBalance() + transfer.getAmount());
@@ -113,10 +113,7 @@ public class CreateTransfer extends HttpServlet {
             currentAccountDao.updateBalance(senderCA.getId(), senderCA.getBalance() - transfer.getAmount());
             // Creazione trasferimento
             Integer committedTransferId = transferDao.create(
-                    transfer.getAmount(),
-                    transfer.getReason(),
-                    senderCA.getId(),
-                    recipientCA.getId()
+                    internal_deriveTransferOutOf(transfer, senderCA, recipientCA)
             );
             Transfer committedTransfer = transferDao.retrieveById( committedTransferId );
 
@@ -211,5 +208,22 @@ public class CreateTransfer extends HttpServlet {
         }
 
         return errors;
+    }
+
+
+    /**
+     * Ricavo di un'istanza di Transfer a partire da sue caratteristiche. Finalizzato alla creazione in db dell'istanza.
+     * @param transfer
+     * @param senderCA
+     * @param recipientCA
+     * @return
+     */
+    private Transfer internal_deriveTransferOutOf(CreateTransferForm transfer, CurrentAccount senderCA, CurrentAccount recipientCA) {
+        Transfer toCreate = new Transfer();
+        toCreate.setAmount( transfer.getAmount() );
+        toCreate.setReason( transfer.getReason() );
+        toCreate.setSenderAccountId( senderCA.getId() );
+        toCreate.setRecipientAccountId(recipientCA.getId() );
+        return toCreate;
     }
 }

@@ -1,5 +1,8 @@
 package it.polimi.tiw.tiw_bank.beans;
 
+import it.polimi.tiw.tiw_bank.controllers.CreateTransfer;
+import it.polimi.tiw.tiw_bank.models.Transfer;
+
 public class CreateTransferForm {
     private Float amount;
     private String reason;
@@ -44,4 +47,5 @@ public class CreateTransferForm {
     public void setRecipientAccountNumber(String recipientAccountNumber) {
         this.recipientAccountNumber = recipientAccountNumber;
     }
+
 }

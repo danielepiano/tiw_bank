@@ -18,17 +18,16 @@ public class CurrentAccountDAO {
 
     /**
      * Creazione conto corrente.
-     * @param balance		Saldo iniziale conto corrente.
-     * @param holderId		Id utente a cui è associato il c
+     * @param toCreate
      * @return
      * @throws SQLException
      */
-    public Integer create(Float balance, Integer holderId) throws SQLException {
+    public Integer create(CurrentAccount toCreate) throws SQLException {
         String query = "INSERT into current_accounts (account_number, balance, holder_id) VALUES(?, ?, ?)";
         try ( PreparedStatement pstat = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS) ) {
-            pstat.setString( 1, internal_generateAccountNumber() );
-            pstat.setFloat( 2, balance );
-            pstat.setInt( 3, holderId );
+            pstat.setString( 1, toCreate.getAccountNumber() );
+            pstat.setFloat( 2, toCreate.getBalance() );
+            pstat.setInt( 3, toCreate.getHolderId() );
             pstat.executeUpdate();
 
             // Ritornato l'id della risorsa appena creata.
@@ -163,14 +162,5 @@ public class CurrentAccountDAO {
         return ca;
     }
 
-    /**
-     * Generazione numero conto come stringa alfanumerica di 12 caratteri.
-     * @return
-     */
-    private String internal_generateAccountNumber() {
-        UUID randomUUID = UUID.randomUUID();
-        System.out.println( randomUUID.toString().replaceAll("-", "").substring(0, 12) );
-        return randomUUID.toString().replaceAll("-", "").substring(0, 12);
-    }
 }
 

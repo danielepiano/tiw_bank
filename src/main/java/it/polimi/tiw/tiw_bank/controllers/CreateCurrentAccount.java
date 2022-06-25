@@ -66,7 +66,7 @@ public class CreateCurrentAccount extends HttpServlet {
             if (errors.isEmpty()) {
                 // 0 ERRORI: completamento SERVIZIO creazione conto corrente
                 // SERVIZIO E CHIAMATE AL DAO
-                currentAccountDao.create( createCAForm.getOpeningBalance(), createCAForm.getHolderId());
+                currentAccountDao.create( createCAForm );
 
                 // Preparazione pagina conferma creazione conto corrente (coincide con la ADMIN HOME stessa)
                 errors.add("Successful creation!");

@@ -1,27 +1,30 @@
 package it.polimi.tiw.tiw_bank.beans;
 
-public class CreateCurrentAccountForm {
-    private Float openingBalance;
-    private Integer holderId;
+import it.polimi.tiw.tiw_bank.models.CurrentAccount;
 
-    public CreateCurrentAccountForm(Float openingBalance, Integer holderId) {
-        this.openingBalance = openingBalance;
-        this.holderId = holderId;
+import java.util.UUID;
+
+public class CreateCurrentAccountForm extends CurrentAccount {
+   public CreateCurrentAccountForm(Float openingBalance, Integer holderId) {
+        setRandomAccountNumber();
+        setOpeningBalance(openingBalance);
+        super.setHolderId(holderId);
     }
 
     public Float getOpeningBalance() {
-        return openingBalance;
+        return super.getBalance();
     }
 
     public void setOpeningBalance(Float openingBalance) {
-        this.openingBalance = openingBalance;
+        super.setBalance(openingBalance);
     }
 
-    public Integer getHolderId() {
-        return holderId;
-    }
-
-    public void setHolderId(Integer holderId) {
-        this.holderId = holderId;
+    /**
+     * Generazione numero conto come stringa alfanumerica di 12 caratteri.
+     * @return
+     */
+    private String setRandomAccountNumber() {
+        UUID randomUUID = UUID.randomUUID();
+        return randomUUID.toString().replaceAll("-", "").substring(0, 12);
     }
 }

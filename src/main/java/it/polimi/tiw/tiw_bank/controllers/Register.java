@@ -1,11 +1,9 @@
 package it.polimi.tiw.tiw_bank.controllers;
 
-import it.polimi.tiw.tiw_bank.beans.CreateCurrentAccountForm;
 import it.polimi.tiw.tiw_bank.beans.LoginForm;
 import it.polimi.tiw.tiw_bank.beans.RegistrationForm;
 import it.polimi.tiw.tiw_bank.dao.UserDAO;
 import it.polimi.tiw.tiw_bank.exceptions.ValidationException;
-import it.polimi.tiw.tiw_bank.models.User;
 import it.polimi.tiw.tiw_bank.models.UserRoles;
 import it.polimi.tiw.tiw_bank.utils.ConnectionHandler;
 import it.polimi.tiw.tiw_bank.validators.BaseValidator;
@@ -62,8 +60,8 @@ public class Register extends HttpServlet {
 
             if (errors.isEmpty()) {
                 // 0 ERRORI: completamento SERVIZIO registrazione
-                userDao.create( regForm.getFirstName(), regForm.getLastName(), UserRoles.CUSTOMER,
-                        regForm.getEmail(), regForm.getPassword());
+                regForm.setRole( UserRoles.CUSTOMER );
+                userDao.create( regForm );
 
                 // Preparazione pagina LOGIN
                 errors.add("Successful registration!");

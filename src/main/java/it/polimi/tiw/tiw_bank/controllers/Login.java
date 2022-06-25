@@ -62,7 +62,7 @@ public class Login extends HttpServlet {
 
             if (errors.isEmpty()) {
                 // 0 ERRORI: completamento SERVIZIO login
-                User user = userDao.checkCredentials( loginForm.getEmail(), loginForm.getPassword() );
+                User user = userDao.checkCredentials( loginForm );
 
                 if (user == null) {
                     // Se login fallito, invio errore

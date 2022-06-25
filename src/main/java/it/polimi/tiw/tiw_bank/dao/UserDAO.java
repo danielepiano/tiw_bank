@@ -1,6 +1,6 @@
 package it.polimi.tiw.tiw_bank.dao;
 
-import it.polimi.tiw.tiw_bank.models.Transfer;
+import it.polimi.tiw.tiw_bank.beans.LoginForm;
 import it.polimi.tiw.tiw_bank.models.User;
 import it.polimi.tiw.tiw_bank.models.UserRoles;
 
@@ -18,22 +18,18 @@ public class UserDAO {
 
     /**
      * Creazione utente.
-     * @param firstName
-     * @param lastName
-     * @param role
-     * @param email
-     * @param password
+     * @param toCreate
      * @return
      * @throws SQLException
      */
-    public Integer create(String firstName, String lastName, UserRoles role, String email, String password) throws SQLException {
+    public Integer create(User toCreate) throws SQLException {
         String query = "INSERT into users (first_name, last_name, role, email, password) VALUES(?, ?, ?, ?, ?)";
         try ( PreparedStatement pstat = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS) ) {
-            pstat.setString( 1, firstName );
-            pstat.setString( 2, lastName );
-            pstat.setString( 3, role.getRole() );
-            pstat.setString( 4, email );
-            pstat.setString( 5, password );
+            pstat.setString( 1, toCreate.getFirstName() );
+            pstat.setString( 2, toCreate.getLastName() );
+            pstat.setString( 3, toCreate.getRole().getRole() );
+            pstat.setString( 4, toCreate.getEmail() );
+            pstat.setString( 5, toCreate.getPassword() );
             pstat.executeUpdate();
 
             // Ritornato l'id della risorsa appena creata.
@@ -111,16 +107,15 @@ public class UserDAO {
 
     /**
      * Check credenziali email-password.
-     * @param email
-     * @param password
+     * @param attempt
      * @return
      * @throws SQLException
      */
-    public User checkCredentials(String email, String password) throws SQLException {
+    public User checkCredentials(LoginForm attempt) throws SQLException {
         String query = "SELECT  id, first_name, last_name, email, role FROM users WHERE email = ? AND password = ?";
         try ( PreparedStatement pstat = con.prepareStatement(query) ) {
-            pstat.setString(1, email);
-            pstat.setString(2, password);
+            pstat.setString(1, attempt.getEmail());
+            pstat.setString(2, attempt.getPassword());
             try ( ResultSet result = pstat.executeQuery() ) {
                 if ( !result.isBeforeFirst() ) {    // Se email-password non sono associati ad alcun utente, ritorna null
                     return null;
